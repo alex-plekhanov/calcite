@@ -467,13 +467,12 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
   }
 
   private static SqlNode expandExprFromJoin(SqlJoin join, SqlIdentifier identifier,
-      @Nullable SelectScope scope) {
-    if (join.getConditionType() != JoinConditionType.USING) {
+      @Nullable SelectScope scope, SqlValidatorImpl validator) {
+    if (join.getConditionType() != JoinConditionType.USING && !join.isNatural()) {
       return identifier;
     }
 
-    for (String name
-        : SqlIdentifier.simpleNames((SqlNodeList) getCondition(join))) {
+    for (String name : requireNonNull(validator.usingNames(join))) {
       if (identifier.getSimple().equals(name)) {
         final List<SqlNode> qualifiedNode = new ArrayList<>();
         for (ScopeChild child : requireNonNull(scope, "scope").children) {
@@ -502,7 +501,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
     // since it is always left-deep join.
     final SqlNode node = join.getLeft();
     if (node instanceof SqlJoin) {
-      return expandExprFromJoin((SqlJoin) node, identifier, scope);
+      return expandExprFromJoin((SqlJoin) node, identifier, scope, validator);
     } else {
       return identifier;
     }
@@ -555,7 +554,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
       return selectItem;
     }
 
-    return expandExprFromJoin((SqlJoin) from, identifier, scope);
+    return expandExprFromJoin((SqlJoin) from, identifier, scope, validator);
   }
 
   private static void validateQualifiedCommonColumn(SqlJoin join,
