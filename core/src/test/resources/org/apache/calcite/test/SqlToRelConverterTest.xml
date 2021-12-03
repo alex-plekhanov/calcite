@@ -3052,23 +3052,6 @@ LogicalProject(EXPR$0=[COALESCE(ROW($4, $5, $6), ROW($14, $15, $16)).X])
 ]]>
     </Resource>
   </TestCase>
-  <TestCase name="testJoinNaturalWithUnqualifiedOrderCommonColumn">
-    <Resource name="sql">
-      <![CDATA[SELECT deptno, name
-FROM emp
-NATURAL JOIN dept
-ORDER BY deptno]]>
-    </Resource>
-    <Resource name="plan">
-      <![CDATA[
-LogicalSort(sort0=[$0], dir0=[ASC])
-  LogicalProject(DEPTNO=[$7], NAME=[$10])
-    LogicalJoin(condition=[=($7, $9)], joinType=[inner])
-      LogicalTableScan(table=[[CATALOG, SALES, EMP]])
-      LogicalTableScan(table=[[CATALOG, SALES, DEPT]])
-]]>
-    </Resource>
-  </TestCase>
   <TestCase name="testJoinOn">
     <Resource name="sql">
       <![CDATA[SELECT * FROM emp

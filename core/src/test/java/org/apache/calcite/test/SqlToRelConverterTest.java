@@ -306,16 +306,6 @@ class SqlToRelConverterTest extends SqlToRelTestBase {
   }
 
   /** Similar to {@link #testJoinNaturalWithUnqualifiedCommonColumn()},
-   * but with common column in ORDER BY. */
-  @Test void testJoinNaturalWithUnqualifiedOrderCommonColumn() {
-    final String sql = "SELECT deptno, name\n"
-        + "FROM emp\n"
-        + "NATURAL JOIN dept\n"
-        + "ORDER BY deptno";
-    sql(sql).ok();
-  }
-
-  /** Similar to {@link #testJoinNaturalWithUnqualifiedCommonColumn()},
    * but with aggregate. */
   @Test void testJoinNaturalWithAggregate() {
     final String sql = "select deptno, count(*)\n"
