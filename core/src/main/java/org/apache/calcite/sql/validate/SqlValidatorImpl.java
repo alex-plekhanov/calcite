@@ -467,7 +467,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
   }
 
   private SqlNode expandExprFromJoin(SqlJoin join, SqlIdentifier identifier,
-      @Nullable SelectScope scope) {
+      @Nullable SelectScope scope, boolean addAlias) {
     if (join.getConditionType() != JoinConditionType.USING && !join.isNatural()) {
       return identifier;
     }
@@ -488,12 +488,14 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
         }
 
         assert qualifiedNode.size() == 2;
-        final SqlNode finalNode =
+        final SqlNode coalesce =
+            SqlStdOperatorTable.COALESCE.createCall(SqlParserPos.ZERO,
+              qualifiedNode.get(0),
+              qualifiedNode.get(1));
+        final SqlNode finalNode = addAlias ?
             SqlStdOperatorTable.AS.createCall(SqlParserPos.ZERO,
-                SqlStdOperatorTable.COALESCE.createCall(SqlParserPos.ZERO,
-                    qualifiedNode.get(0),
-                    qualifiedNode.get(1)),
-                new SqlIdentifier(name, SqlParserPos.ZERO));
+                coalesce,
+                new SqlIdentifier(name, SqlParserPos.ZERO)) : coalesce;
         return finalNode;
       }
     }
@@ -502,7 +504,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
     // since it is always left-deep join.
     final SqlNode node = join.getLeft();
     if (node instanceof SqlJoin) {
-      return expandExprFromJoin((SqlJoin) node, identifier, scope);
+      return expandExprFromJoin((SqlJoin) node, identifier, scope, addAlias);
     } else {
       return identifier;
     }
@@ -537,7 +539,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
   }
 
   private SqlNode expandCommonColumn(SqlSelect sqlSelect,
-      SqlNode selectItem, @Nullable SelectScope scope) {
+      SqlNode selectItem, @Nullable SelectScope scope, boolean addAlias) {
     if (!(selectItem instanceof SqlIdentifier)) {
       return selectItem;
     }
@@ -555,7 +557,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
       return selectItem;
     }
 
-    return expandExprFromJoin((SqlJoin) from, identifier, scope);
+    return expandExprFromJoin((SqlJoin) from, identifier, scope, addAlias);
   }
 
   private void validateQualifiedCommonColumn(SqlJoin join,
@@ -4153,7 +4155,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
 
     List<SqlNode> expandList = new ArrayList<>();
     for (SqlNode orderItem : orderList) {
-      SqlNode expandedOrderItem = expand(orderItem, orderScope);
+      SqlNode expandedOrderItem = expandOrderExpr(orderItem, orderScope, select);
       expandList.add(expandedOrderItem);
     }
 
@@ -5997,6 +5999,16 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
     return newExpr;
   }
 
+  public SqlNode expandOrderExpr(SqlNode expr,
+      SqlValidatorScope scope, SqlSelect select) {
+    final Expander expander = new OrderExpander(this, scope, select);
+    final SqlNode newExpr = expander.go(expr);
+    if (expr != newExpr) {
+      setOriginal(newExpr, expr);
+    }
+    return newExpr;
+  }
+
   @Override public SqlNode expand(SqlNode expr, SqlValidatorScope scope) {
     final Expander expander = new Expander(this, scope);
     SqlNode newExpr = expander.go(expr);
@@ -6573,12 +6585,36 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
     }
 
     @Override public @Nullable SqlNode visit(SqlIdentifier id) {
-      final SqlNode node = validator.expandCommonColumn(select, id, (SelectScope) getScope());
+      final SqlNode node = validator.expandCommonColumn(select, id, (SelectScope) getScope(), true);
       if (node != id) {
         return node;
       } else {
         return super.visit(id);
       }
+    }
+  }
+
+  /**
+   * TODO
+   */
+  static class OrderExpander extends Expander {
+    final SqlSelect select;
+
+    OrderExpander(SqlValidatorImpl validator, SqlValidatorScope scope,
+        SqlSelect select) {
+      super(validator, scope);
+      this.select = select;
+    }
+
+    @Override public @Nullable SqlNode visit(SqlIdentifier id) {
+      if (id.isSimple()) {
+        final SelectScope scope = validator.getRawSelectScope(select);
+        SqlNode node = validator.expandCommonColumn(select, id, scope, false);
+        if (node != id) {
+          return node;
+        }
+      }
+      return super.visit(id);
     }
   }
 
@@ -6636,7 +6672,7 @@ public class SqlValidatorImpl implements SqlValidatorWithHints {
       }
       if (id.isSimple()) {
         final SelectScope scope = validator.getRawSelectScope(select);
-        SqlNode node = validator.expandCommonColumn(select, id, scope);
+        SqlNode node = validator.expandCommonColumn(select, id, scope, false);
         if (node != id) {
           return node;
         }
