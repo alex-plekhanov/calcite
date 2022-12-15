@@ -3467,4 +3467,23 @@ order by ename, deptno;
 
 !ok
 
+!use scott
+select (select dname from "scott".dept where dept.deptno = emp.deptno) from "scott".emp group by deptno;
++-------+--------+-----+-----+
+| ENAME | DEPTNO | G_E | G_D |
++-------+--------+-----+-----+
+| Adam  |     50 |   0 |   0 |
+| Adam  |        |   0 |   1 |
+| Bob   |     10 |   0 |   0 |
+| Bob   |        |   0 |   1 |
+| Eric  |     20 |   0 |   0 |
+| Eric  |        |   0 |   1 |
+|       |     10 |   1 |   0 |
+|       |     20 |   1 |   0 |
+|       |     50 |   1 |   0 |
++-------+--------+-----+-----+
+(9 rows)
+
+!ok
+
 # End agg.iq
