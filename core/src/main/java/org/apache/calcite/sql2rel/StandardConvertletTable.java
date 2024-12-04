@@ -746,7 +746,7 @@ public class StandardConvertletTable extends ReflectiveConvertletTable {
           (SqlIntervalQualifier) right;
       if (left instanceof SqlIntervalLiteral) {
         RexLiteral sourceInterval =
-            (RexLiteral) cx.convertExpression(left);
+            (RexLiteral) arg;
         BigDecimal sourceValue =
             (BigDecimal) sourceInterval.getValue();
         RexLiteral castedInterval =
@@ -754,11 +754,9 @@ public class StandardConvertletTable extends ReflectiveConvertletTable {
                 intervalQualifier);
         return castToValidatedType(
             call.getParserPosition(), call, castedInterval, validator, rexBuilder, safe);
-      } else if (left instanceof SqlNumericLiteral) {
-        RexLiteral sourceInterval =
-            (RexLiteral) cx.convertExpression(left);
+      } else if (arg instanceof RexLiteral && SqlTypeUtil.isNumeric(arg.getType())) {
         BigDecimal sourceValue =
-            requireNonNull(sourceInterval.getValueAs(BigDecimal.class),
+            requireNonNull(((RexLiteral) arg).getValueAs(BigDecimal.class),
                 "sourceValue");
         final BigDecimal multiplier = intervalQualifier.getUnit().multiplier;
         RexLiteral castedInterval =
@@ -768,9 +766,8 @@ public class StandardConvertletTable extends ReflectiveConvertletTable {
         return castToValidatedType(
             call.getParserPosition(), call, castedInterval, validator, rexBuilder, safe);
       }
-      RexNode value = cx.convertExpression(left);
       return castToValidatedType(
-          call.getParserPosition(), call, value, validator, rexBuilder, safe);
+          call.getParserPosition(), call, arg, validator, rexBuilder, safe);
     }
 
     final SqlDataTypeSpec dataType = (SqlDataTypeSpec) right;

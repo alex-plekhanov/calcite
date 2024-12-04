@@ -1000,6 +1000,10 @@ public class SqlOperatorTest {
         "cast(-5723 as interval minute(4))",
         "-5723",
         "INTERVAL MINUTE(4) NOT NULL");
+    f.checkScalar(
+        "cast(cast(1 as integer) as interval minute)",
+        "+1",
+        "INTERVAL MINUTE NOT NULL");
   }
 
   @ParameterizedTest
